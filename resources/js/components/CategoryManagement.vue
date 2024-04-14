@@ -18,144 +18,79 @@
 </template>
 
 <script>
+import {useCategoriesStore} from '../store/categories'; // Import your Pinia store
 import apiClient from './axios';
 
 export default {
     data() {
         return {
-            items: [],
-            categories: [],
             form: {
                 name: '',
-                quantity: 0,
-                category_id: null, // Assuming category_id is the foreign key for category
             },
-            editingItem: null,
-            searchQuery: '',
-            selectedCategory: '',
-            currentPage: 1,
-            itemsPerPage: 5,
-            sortKey: '',
-            sortOrder: 'asc',
+            editingCategory: null,
         };
     },
     computed: {
-        filteredItems() {
-            return this.items
-                .filter(item => this.selectedCategory ? item.category_id === this.selectedCategory : true)
-                .filter(item => this.searchQuery ? item.name.toLowerCase().includes(this.searchQuery.toLowerCase()) : true);
-        },
-        paginatedItems() {
-            const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-            return this.filteredItems
-                .sort((a, b) => {
-                    if (this.sortKey) {
-                        const modifier = this.sortOrder === 'desc' ? -1 : 1;
-                        return modifier * (a[this.sortKey] > b[this.sortKey] ? 1 : -1);
-                    } else {
-                        return 0;
-                    }
-                })
-                .slice(startIndex, startIndex + this.itemsPerPage);
-        },
-        totalPages() {
-            return Math.ceil(this.filteredItems.length / this.itemsPerPage);
+        categories() {
+            return useCategoriesStore().categories;
         },
     },
     methods: {
-        fetchItems() {
-            apiClient.get('/items')
-                .then(response => {
-                    this.items = response.data;
-                })
-                .catch(error => {
-                    console.error('Error fetching items:', error);
-                });
-
-            apiClient.get('/categories')
-                .then(response => {
-                    this.categories = response.data;
-                })
-                .catch(error => {
-                    console.error('Error fetching categories:', error);
-                });
-        },
-        saveItem() {
-            if (this.editingItem) {
-                apiClient.put(`/items/${this.editingItem.id}`, this.form)
+        saveCategory() {
+            const store = useCategoriesStore();
+            if (this.editingCategory) {
+                apiClient.put(`/categories/${this.editingCategory.id}`, this.form)
                     .then(response => {
                         // Handle update success
-                        this.fetchItems(); // Refresh item list
+                        store.editCategory(response.data); // Update category in store
                         this.clearForm();
                     })
                     .catch(error => {
-                        console.error('Error updating item:', error);
+                        console.error('Error updating category:', error);
                     });
             } else {
-                apiClient.post('/items', this.form)
+                apiClient.post('/categories', this.form)
                     .then(response => {
                         // Handle creation success
-                        this.fetchItems(); // Refresh item list
+                        store.addCategory(response.data); // Add new category to store
                         this.clearForm();
                     })
                     .catch(error => {
-                        console.error('Error creating item:', error);
+                        console.error('Error creating category:', error);
                     });
             }
         },
-        editItem(item) {
-            this.editingItem = item;
-            this.form.name = item.name;
-            this.form.quantity = item.quantity;
-            this.form.category_id = item.category_id;
+        editCategory(category) {
+            this.editingCategory = category;
+            this.form.name = category.name;
         },
-        deleteItem(item) {
-            apiClient.delete(`/items/${item.id}`)
+        deleteCategory(category) {
+            apiClient.delete(`/categories/${category.id}`)
                 .then(response => {
                     // Handle deletion success
-                    this.fetchItems(); // Refresh item list
+                    useCategoriesStore().deleteCategory(category.id); // Remove category from store
                 })
                 .catch(error => {
-                    console.error('Error deleting item:', error);
+                    console.error('Error deleting category:', error);
                 });
-        },
-        searchItems() {
-            this.currentPage = 1; // Reset pagination when searching
-        },
-        filterItems() {
-            this.currentPage = 1; // Reset pagination when filtering
-        },
-        prevPage() {
-            if (this.currentPage > 1) {
-                this.currentPage--;
-            }
-        },
-        nextPage() {
-            if (this.currentPage < this.totalPages) {
-                this.currentPage++;
-            }
-        },
-        sortBy(key) {
-            if (this.sortKey === key) {
-                this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
-            } else {
-                this.sortKey = key;
-                this.sortOrder = 'asc';
-            }
         },
         clearForm() {
             this.form.name = '';
-            this.form.quantity = 0;
-            this.form.category_id = null;
-            this.editingItem = null;
+            this.editingCategory = null;
         },
     },
     mounted() {
-        this.fetchItems();
+        // Fetch categories if needed on component mount
+        // apiClient.get('/categories')
+        //     .then(response => {
+        //         useCategoriesStore().setCategories(response.data);
+        //     })
+        //     .catch(error => {
+        //         console.error('Error fetching categories:', error);
+        //     });
     },
 };
 </script>
-
 
 <style scoped>
 /* CSS styles for the component */

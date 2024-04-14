@@ -36,135 +36,66 @@
     </div>
 </template>
 
-
 <script>
-import apiClient from './axios';
+import { useStore } from 'pinia';
+import { computed } from 'vue'; // Import computed from Vue
 
 export default {
-    data() {
+    setup() {
+        const store = useStore(); // Use Pinia store
+
+        // Use computed properties from Pinia store
+        const searchQuery = computed(() => store.searchQuery);
+        const selectedCategory = computed(() => store.selectedCategory);
+        const currentPage = computed(() => store.currentPage);
+        const itemsPerPage = computed(() => store.itemsPerPage);
+        const sortKey = computed(() => store.sortKey);
+        const sortOrder = computed(() => store.sortOrder);
+
+        // Use Pinia store actions
+        const {
+            fetchItems,
+            saveItem,
+            editItem,
+            deleteItem,
+            searchItems,
+            filterItems,
+            prevPage,
+            nextPage,
+            sortBy
+        } = store;
+
+        // Use Pinia store state directly if needed
+        const items = store.items;
+        const form = {
+            name: '',
+            quantity: 0,
+        };
+        const editingItem = null; // Placeholder for editingItem
+
         return {
-            items: [],
-            form: {
-                name: '',
-                quantity: 0,
-            },
-            editingItem: null,
-            searchQuery: '',
-            selectedCategory: '',
-            currentPage: 1,
-            itemsPerPage: 5,
-            sortKey: '',
-            sortOrder: 'asc',
+            items,
+            form,
+            editingItem,
+            searchQuery,
+            selectedCategory,
+            currentPage,
+            itemsPerPage,
+            sortKey,
+            sortOrder,
+            fetchItems,
+            saveItem,
+            editItem,
+            deleteItem,
+            searchItems,
+            filterItems,
+            prevPage,
+            nextPage,
+            sortBy,
         };
     },
-    computed: {
-        paginatedItems() {
-            const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-            return this.items
-                .filter(item => this.selectedCategory ? item.categoryId === this.selectedCategory : true)
-                .filter(item => this.searchQuery ? item.name.toLowerCase().includes(this.searchQuery.toLowerCase()) : true)
-                .sort((a, b) => {
-                    if (this.sortKey) {
-                        const modifier = this.sortOrder === 'desc' ? -1 : 1;
-                        return modifier * (a[this.sortKey] > b[this.sortKey] ? 1 : -1);
-                    } else {
-                        return 0;
-                    }
-                })
-                .slice(startIndex, startIndex + this.itemsPerPage);
-        },
-        totalPages() {
-            return Math.ceil(this.filteredItems.length / this.itemsPerPage);
-        },
-    },
-    methods: {
-        fetchPreviousSearchTerms() {
-            axios.get('/api/previous-search-terms')
-                .then(response => {
-                    this.previousSearchTerms = response.data;
-                })
-                .catch(error => {
-                    console.error('Error fetching previous search terms:', error);
-                });
-        },
-        fetchItems() {
-            apiClient.get('/items')
-                .then(response => {
-                    this.items = response.data;
-                })
-                .catch(error => {
-                    console.error('Error fetching items:', error);
-                });
-        },
-        saveItem() {
-            if (this.editingItem) {
-                apiClient.put(`/items/${this.editingItem.id}`, this.form)
-                    .then(response => {
-                        // Handle update success
-                        this.fetchItems(); // Refresh item list
-                    })
-                    .catch(error => {
-                        console.error('Error updating item:', error);
-                    });
-            } else {
-                apiClient.post('/items', this.form)
-                    .then(response => {
-                        // Handle creation success
-                        this.fetchItems(); // Refresh item list
-                    })
-                    .catch(error => {
-                        console.error('Error creating item:', error);
-                    });
-            }
-        },
-        editItem(item) {
-            this.editingItem = item;
-            this.form.name = item.name;
-            this.form.quantity = item.quantity;
-        },
-        deleteItem(item) {
-            apiClient.delete(`/items/${item.id}`)
-                .then(response => {
-                    // Handle deletion success
-                    this.fetchItems(); // Refresh item list
-                })
-                .catch(error => {
-                    console.error('Error deleting item:', error);
-                });
-        },
-        searchItems() {
-            this.currentPage = 1; // Reset pagination when searching
-        },
-        filterItems() {
-            this.currentPage = 1; // Reset pagination when filtering
-        },
-        prevPage() {
-            if (this.currentPage > 1) {
-                this.currentPage--;
-            }
-        },
-        nextPage() {
-            if (this.currentPage < this.totalPages) {
-                this.currentPage++;
-            }
-        },
-        sortBy(key) {
-            if (this.sortKey === key) {
-                this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
-            } else {
-                this.sortKey = key;
-                this.sortOrder = 'asc';
-            }
-        },
-    },
-    mounted() {
-        this.fetchPreviousSearchTerms();
-        this.fetchItems();
-    },
-
 };
 </script>
-
 
 <style scoped>
 /* CSS styles for the component */
