@@ -23,15 +23,55 @@ import apiClient from './axios';
 export default {
     data() {
         return {
+            items: [],
             categories: [],
             form: {
                 name: '',
+                quantity: 0,
+                category_id: null, // Assuming category_id is the foreign key for category
             },
-            editingCategory: null,
+            editingItem: null,
+            searchQuery: '',
+            selectedCategory: '',
+            currentPage: 1,
+            itemsPerPage: 5,
+            sortKey: '',
+            sortOrder: 'asc',
         };
     },
+    computed: {
+        filteredItems() {
+            return this.items
+                .filter(item => this.selectedCategory ? item.category_id === this.selectedCategory : true)
+                .filter(item => this.searchQuery ? item.name.toLowerCase().includes(this.searchQuery.toLowerCase()) : true);
+        },
+        paginatedItems() {
+            const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+            return this.filteredItems
+                .sort((a, b) => {
+                    if (this.sortKey) {
+                        const modifier = this.sortOrder === 'desc' ? -1 : 1;
+                        return modifier * (a[this.sortKey] > b[this.sortKey] ? 1 : -1);
+                    } else {
+                        return 0;
+                    }
+                })
+                .slice(startIndex, startIndex + this.itemsPerPage);
+        },
+        totalPages() {
+            return Math.ceil(this.filteredItems.length / this.itemsPerPage);
+        },
+    },
     methods: {
-        fetchCategories() {
+        fetchItems() {
+            apiClient.get('/items')
+                .then(response => {
+                    this.items = response.data;
+                })
+                .catch(error => {
+                    console.error('Error fetching items:', error);
+                });
+
             apiClient.get('/categories')
                 .then(response => {
                     this.categories = response.data;
@@ -40,47 +80,82 @@ export default {
                     console.error('Error fetching categories:', error);
                 });
         },
-        saveCategory() {
-            if (this.editingCategory) {
-                apiClient.put(`/categories/${this.editingCategory.id}`, this.form)
+        saveItem() {
+            if (this.editingItem) {
+                apiClient.put(`/items/${this.editingItem.id}`, this.form)
                     .then(response => {
                         // Handle update success
-                        this.fetchCategories(); // Refresh category list
+                        this.fetchItems(); // Refresh item list
+                        this.clearForm();
                     })
                     .catch(error => {
-                        console.error('Error updating category:', error);
+                        console.error('Error updating item:', error);
                     });
             } else {
-                apiClient.post('/categories', this.form)
+                apiClient.post('/items', this.form)
                     .then(response => {
                         // Handle creation success
-                        this.fetchCategories(); // Refresh category list
+                        this.fetchItems(); // Refresh item list
+                        this.clearForm();
                     })
                     .catch(error => {
-                        console.error('Error creating category:', error);
+                        console.error('Error creating item:', error);
                     });
             }
         },
-        editCategory(category) {
-            this.editingCategory = category;
-            this.form.name = category.name;
+        editItem(item) {
+            this.editingItem = item;
+            this.form.name = item.name;
+            this.form.quantity = item.quantity;
+            this.form.category_id = item.category_id;
         },
-        deleteCategory(category) {
-            apiClient.delete(`/categories/${category.id}`)
+        deleteItem(item) {
+            apiClient.delete(`/items/${item.id}`)
                 .then(response => {
                     // Handle deletion success
-                    this.fetchCategories(); // Refresh category list
+                    this.fetchItems(); // Refresh item list
                 })
                 .catch(error => {
-                    console.error('Error deleting category:', error);
+                    console.error('Error deleting item:', error);
                 });
+        },
+        searchItems() {
+            this.currentPage = 1; // Reset pagination when searching
+        },
+        filterItems() {
+            this.currentPage = 1; // Reset pagination when filtering
+        },
+        prevPage() {
+            if (this.currentPage > 1) {
+                this.currentPage--;
+            }
+        },
+        nextPage() {
+            if (this.currentPage < this.totalPages) {
+                this.currentPage++;
+            }
+        },
+        sortBy(key) {
+            if (this.sortKey === key) {
+                this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.sortKey = key;
+                this.sortOrder = 'asc';
+            }
+        },
+        clearForm() {
+            this.form.name = '';
+            this.form.quantity = 0;
+            this.form.category_id = null;
+            this.editingItem = null;
         },
     },
     mounted() {
-        this.fetchCategories();
+        this.fetchItems();
     },
 };
 </script>
+
 
 <style scoped>
 /* CSS styles for the component */
